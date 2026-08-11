@@ -1,0 +1,18 @@
+# Secretos. Nunca, bajo ningun concepto, en el arbol versionado.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencias y artefactos de build
+node_modules/
+artifacts/
+cache/
+typechain-types/
+coverage/
+coverage.json
+
+# Herramientas
+.DS_Store
+*.log

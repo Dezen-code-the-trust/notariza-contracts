@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.28;
 
-import {_NOTARIZA_STORAGE_POSITION} from '../constants/constants.sol';
+import {_NOTARIZA_STORAGE_POSITION, _DIAMOND} from '../constants/constants.sol';
 import {INotariza} from './INotariza.sol';
 import {DidDocumentDetailedInternal} from '@red-isbe/isbe-contracts/contracts/identity/didregistry/DidDocumentDetailedInternal.sol';
+import {IDidRegistryQuery} from '@red-isbe/isbe-contracts/contracts/identity/didregistry/interfaces/IDidRegistryQuery.sol';
 
 /// @title NotarizaInternal
 /// @notice Logica interna y storage del modulo Notariza
@@ -22,19 +23,19 @@ abstract contract NotarizaInternal is DidDocumentDetailedInternal {
     /// @dev Orden de comprobaciones de mas barata a mas cara: hash vacio, identidad y por
     ///      ultimo la lectura de storage que detecta el hash ya sellado.
     ///      La pausa se comprueba antes, en el modifier whenNotPaused de la capa externa.
+    ///      El gate de identidad es una llamada externa (staticcall) a IDidRegistryQuery
+    ///      contra el Diamond de gobernanza de ISBE: no es acceso a storage propio ni
+    ///      delegatecall. did == bytes32(0) es tambien el valor legitimo para una cuenta
+    ///      conocida sin capabilityInvocation activa; la evidencia sigue siendo valida por
+    ///      msg.sender.
     /// @param _hash Hash del documento a sellar
     function _notarizar(bytes32 _hash) internal virtual {
         _comprobarHashNoVacio(_hash);
 
-        // TODO(T4): gate de identidad contra el DidRegistry del Diamond de gobernanza
-        // (0x...15Be). Es una llamada externa (staticcall) a IDidRegistryQuery, no acceso a
-        // storage propio ni delegatecall:
-        //   if (!IDidRegistryQuery(_DIAMOND).isKnownDid(msg.sender))
-        //       revert INotariza.IdentidadNoRegistrada(msg.sender);
-        //   did = IDidRegistryQuery(_DIAMOND).didOf(msg.sender);
-        // Hasta entonces la evidencia se registra con did == bytes32(0), que es tambien el
-        // valor legitimo para una cuenta conocida sin capabilityInvocation activa.
-        bytes32 did = bytes32(0);
+        if (!IDidRegistryQuery(_DIAMOND).isKnownDid(msg.sender)) {
+            revert INotariza.IdentidadNoRegistrada(msg.sender);
+        }
+        bytes32 did = IDidRegistryQuery(_DIAMOND).didOf(msg.sender);
 
         _comprobarNoNotarizado(_hash);
 

@@ -19,3 +19,6 @@ bytes32 constant _NOTARIZA_CONFIG_ID = keccak256('isbe.customers.dezen.notariza.
 
 /// @dev Rol de administracion del modulo. Reservado: notarizar no exige rol, solo identidad ISBE.
 bytes32 constant _NOTARIZA_ADMIN_ROLE = keccak256('isbe.customers.dezen.role.notariza.admin');
+
+/// @dev Diamond de gobernanza de ISBE. Misma direccion en local y en PRE (genesis).
+address constant _DIAMOND = 0x00000000000000000000000000000000000015Be;

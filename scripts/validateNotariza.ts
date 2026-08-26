@@ -7,10 +7,9 @@
  * Todas las llamadas van al proxy, nunca al facet: una funcion que no este declarada en
  * selectorsIntrospection() compila y despliega, pero no es enrutable, y solo se detecta asi.
  *
- * Desde T4, `notarizar` exige identidad ISBE activa: la cuenta admin (#0 de Hardhat) no tiene
- * DID registrado, asi que se usa solo para los pasos que no requieren identidad y para probar
- * que el gate revierte. El camino feliz se ejercita con la cuenta de prueba que registra
- * contracts/scripts/registerTestDid.ts (cuenta #1 de Hardhat) — ejecutar ese script antes.
+ * Desde T4, `notarizar` exige identidad ISBE activa. registerTestDid.ts registra DID a las
+ * cuentas #0 y #1 de Hardhat, asi que el paso que prueba el revert usa la cuenta #2 (sin DID).
+ * El camino feliz se ejercita con la cuenta #1 — ejecutar registerTestDid.ts antes.
  */
 import { ethers, artifacts } from 'hardhat'
 import { Mnemonic, HDNodeWallet } from 'ethers'
@@ -26,13 +25,18 @@ async function main() {
     const cuentaConDid = HDNodeWallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/1").connect(
         ethers.provider
     )
+    const cuentaSinDid = HDNodeWallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/2").connect(
+        ethers.provider
+    )
     console.log('Proxy:', PROXY)
-    console.log('Cuenta admin (sin DID):', signer.address)
+    console.log('Cuenta admin:', signer.address)
     console.log('Cuenta de prueba (con DID):', cuentaConDid.address)
+    console.log('Cuenta sin DID:', cuentaSinDid.address)
 
     const { abi } = await artifacts.readArtifact('INotariza')
     const notariza = new ethers.Contract(PROXY, abi, signer)
     const notarizaConDid = new ethers.Contract(PROXY, abi, cuentaConDid)
+    const notarizaSinDid = new ethers.Contract(PROXY, abi, cuentaSinDid)
 
     // 1. La infraestructura de ISBE esta enrutada en el proxy.
     //    El README del template propone eip712Domain(), pero esa funcion no existe en
@@ -61,10 +65,10 @@ async function main() {
     const hash = ethers.id('notariza-validacion-' + (await ethers.provider.getBlockNumber()))
     console.log('\n[2] estaNotarizado(hash nuevo):', await notariza.estaNotarizado(hash))
 
-    // 3. notarizar sin identidad ISBE (cuenta admin) revierte con IdentidadNoRegistrada
+    // 3. notarizar sin identidad ISBE revierte con IdentidadNoRegistrada
     console.log('\n[3] notarizar(hash) desde la cuenta sin DID')
     try {
-        await notariza.notarizar.staticCall(hash)
+        await notarizaSinDid.notarizar.staticCall(hash)
         throw new Error('No revirtio: el gate de identidad no se esta aplicando')
     } catch (error: unknown) {
         const data = (error as { data?: string }).data
@@ -120,7 +124,7 @@ async function main() {
     // 8. hash vacio revierte con HashVacio antes de comprobar la identidad
     console.log('\n[8] notarizar(bytes32(0)) desde la cuenta sin DID')
     try {
-        await notariza.notarizar.staticCall(ethers.ZeroHash)
+        await notarizaSinDid.notarizar.staticCall(ethers.ZeroHash)
         throw new Error('No revirtio con HashVacio')
     } catch (error: unknown) {
         const data = (error as { data?: string }).data

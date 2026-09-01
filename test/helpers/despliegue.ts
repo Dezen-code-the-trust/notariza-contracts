@@ -67,14 +67,17 @@ export async function desplegarNotariza(
         'Deployed'
     )
     const implementacion = paso1.args.businessAddress as string
+    const version = paso1.args.version as bigint
 
     // configId propio por despliegue: no interferir con otros tests que reutilizan la misma
     // red persistente.
     const configId = ethers.id(`notariza-test-config-${Date.now()}-${Math.random()}`)
+    // setConfiguration fija un snapshot de la version indicada: debe ser la que se acaba de
+    // registrar en el paso 1, no un literal.
     await enviar(
         iface.encodeFunctionData('setConfiguration', [
             configId,
-            [{ businessId: resolverKey, version: 1 }],
+            [{ businessId: resolverKey, version }],
         ]),
         admin,
         iface,

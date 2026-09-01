@@ -4,7 +4,6 @@ import { ethers } from 'hardhat'
 export const DIAMOND = '0x00000000000000000000000000000000000015BE'
 
 export const NOTARIZA_RESOLVER_KEY = ethers.id('isbe.customers.dezen.notariza.resolver.key')
-export const NOTARIZA_CONFIG_ID = ethers.id('isbe.customers.dezen.notariza.configuration')
 export const NOTARIZA_ADMIN_ROLE = ethers.id('isbe.customers.dezen.role.notariza.admin')
 
 /**
@@ -13,5 +12,3 @@ export const NOTARIZA_ADMIN_ROLE = ethers.id('isbe.customers.dezen.role.notariza
  * su cadena documentada (ver invariante 6 del CLAUDE.md raiz).
  */
 export const PAUSER_ROLE = '0x8c911f4537972e7549dbbd37a96b929a4b480f4fb156fc6344524bdf2ca50aa1'
-
-export const DEFAULT_ADMIN_ROLE = ethers.ZeroHash

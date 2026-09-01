@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { cuentaDePrueba, asegurarDidDePrueba } from '../helpers/cuentas'
+import { cuentaDePrueba, asegurarDidDePrueba, didDeCuenta, hashDePrueba } from '../helpers/cuentas'
 
 describe('Notariza — unitarios (NotarizaTestWrapper, sin proxy)', () => {
     let wrapper: Awaited<ReturnType<typeof desplegarWrapper>>
@@ -17,10 +17,6 @@ describe('Notariza — unitarios (NotarizaTestWrapper, sin proxy)', () => {
         await contrato.waitForDeployment()
         await (await contrato.initializeForTest(admin.address)).wait()
         return contrato
-    }
-
-    function hashDePrueba(etiqueta: string) {
-        return ethers.id(`notariza-unit-${etiqueta}-${Date.now()}-${Math.random()}`)
     }
 
     before(async () => {
@@ -43,6 +39,7 @@ describe('Notariza — unitarios (NotarizaTestWrapper, sin proxy)', () => {
         const evidencia = await wrapper.verificar(hash)
         expect(evidencia.timestamp).to.equal(BigInt(bloque!.timestamp))
         expect(evidencia.emisor).to.equal(cuentaConDid.address)
+        expect(evidencia.did).to.equal(await didDeCuenta(admin, cuentaConDid.address))
         expect(evidencia.did).to.not.equal(ethers.ZeroHash)
         expect(await wrapper.estaNotarizado(hash)).to.equal(true)
     })

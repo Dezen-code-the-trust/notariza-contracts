@@ -16,6 +16,33 @@ describe('NotarizaFacet — introspeccion', () => {
         expect([...declarados].sort()).to.deep.equal([...esperados].sort())
     })
 
+    it('selectorsIntrospection() lista exactamente los selectores external de NotarizaFacet', async () => {
+        // Comparar solo contra INotariza no basta: si alguien anade una funcion external a
+        // Notariza.sol y se olvida de declararla TANTO en INotariza.sol COMO en
+        // selectorsIntrospection(), ambos lados de esa comparacion quedan iguales igualmente y
+        // el test pasa en verde aunque la funcion no sea enrutable. Este test deriva los
+        // selectores esperados directamente de la ABI completa del facet, sin pasar por
+        // INotariza, y descarta las 3 funciones de introspeccion (no forman parte de la
+        // interfaz de negocio).
+        const facet = await ethers.deployContract('NotarizaFacet')
+        await facet.waitForDeployment()
+        const declarados: string[] = await facet.selectorsIntrospection()
+
+        const { abi } = await artifacts.readArtifact('NotarizaFacet')
+        const iface = new ethers.Interface(abi)
+        const selectoresIntrospeccion = new Set(
+            ['interfacesIntrospection', 'businessIdIntrospection', 'selectorsIntrospection'].map(
+                (nombre) => iface.getFunction(nombre)!.selector
+            )
+        )
+        const esperados = iface.fragments
+            .filter((f) => f.type === 'function')
+            .map((f) => iface.getFunction((f as ethers.FunctionFragment).name)!.selector)
+            .filter((selector) => !selectoresIntrospeccion.has(selector))
+
+        expect([...declarados].sort()).to.deep.equal([...esperados].sort())
+    })
+
     it('businessIdIntrospection() devuelve la resolver key del namespace', async () => {
         const facet = await ethers.deployContract('NotarizaFacet')
         await facet.waitForDeployment()

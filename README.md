@@ -62,7 +62,7 @@ memoria que lo sustituya.
 ```bash
 npx hardhat test --network isbe      # suite completa: unitarios, integracion, introspeccion,
                                       # constantes y upgrade
-slither .                            # analisis estatico; ver docs/slither-report.md
+slither . --hardhat-artifacts-directory artifacts --filter-paths "node_modules|isbe-network-case" --exclude-dependencies  # analisis estatico; ver docs/slither-report.md
 ```
 
 ## Despliegue

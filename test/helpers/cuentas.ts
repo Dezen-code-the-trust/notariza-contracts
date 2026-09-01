@@ -93,3 +93,9 @@ export async function didDeCuenta(admin: Signer, direccion: string): Promise<str
     const didQuery = new Contract(DIAMOND, abi, admin)
     return didQuery.didOf(direccion)
 }
+
+/** Hash unico de prueba, sufijado con `prefijo`, para no colisionar entre tests ni entre
+ *  ejecuciones sobre la misma red local persistente. */
+export function hashDePrueba(prefijo: string): string {
+    return ethers.id(`notariza-${prefijo}-${Date.now()}-${Math.random()}`)
+}

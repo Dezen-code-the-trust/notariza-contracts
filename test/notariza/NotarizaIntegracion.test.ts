@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers, artifacts } from 'hardhat'
 import { desplegarNotariza } from '../helpers/despliegue'
-import { cuentaDePrueba, asegurarDidDePrueba } from '../helpers/cuentas'
+import { cuentaDePrueba, asegurarDidDePrueba, didDeCuenta, hashDePrueba } from '../helpers/cuentas'
 
 describe('Notariza — integracion (siempre contra el proxy)', () => {
     let admin: Awaited<ReturnType<typeof ethers.getSigners>>[number]
@@ -35,10 +35,6 @@ describe('Notariza — integracion (siempre contra el proxy)', () => {
         return new ethers.Contract(proxy, [...pauseAbi, ...accessAbi], cuenta)
     }
 
-    function hashDePrueba(etiqueta: string) {
-        return ethers.id(`notariza-integracion-${etiqueta}-${Date.now()}-${Math.random()}`)
-    }
-
     it('camino feliz a traves del proxy: notarizar + verificar', async () => {
         const hash = hashDePrueba('feliz')
         const contrato = await notariza(cuentaConDid)
@@ -49,6 +45,7 @@ describe('Notariza — integracion (siempre contra el proxy)', () => {
         const evidencia = await (await notariza()).verificar(hash)
         expect(evidencia.timestamp).to.equal(BigInt(bloque!.timestamp))
         expect(evidencia.emisor).to.equal(cuentaConDid.address)
+        expect(evidencia.did).to.equal(await didDeCuenta(admin, cuentaConDid.address))
         expect(await (await notariza()).estaNotarizado(hash)).to.equal(true)
     })
 

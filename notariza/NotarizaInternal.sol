@@ -23,19 +23,13 @@ abstract contract NotarizaInternal is DidDocumentDetailedInternal {
     /// @dev Orden de comprobaciones de mas barata a mas cara: hash vacio, identidad y por
     ///      ultimo la lectura de storage que detecta el hash ya sellado.
     ///      La pausa se comprueba antes, en el modifier whenNotPaused de la capa externa.
-    ///      El gate de identidad es una llamada externa (staticcall) a IDidRegistryQuery
-    ///      contra el Diamond de gobernanza de ISBE: no es acceso a storage propio ni
-    ///      delegatecall. did == bytes32(0) es tambien el valor legitimo para una cuenta
-    ///      conocida sin capabilityInvocation activa; la evidencia sigue siendo valida por
-    ///      msg.sender.
+    ///      La resolucion de identidad vive en _resolverIdentidad, punto de extension para
+    ///      test (ver su NatSpec).
     /// @param _hash Hash del documento a sellar
     function _notarizar(bytes32 _hash) internal virtual {
         _comprobarHashNoVacio(_hash);
 
-        if (!IDidRegistryQuery(_DIAMOND).isKnownDid(msg.sender)) {
-            revert INotariza.IdentidadNoRegistrada(msg.sender);
-        }
-        bytes32 did = IDidRegistryQuery(_DIAMOND).didOf(msg.sender);
+        bytes32 did = _resolverIdentidad(msg.sender);
 
         _comprobarNoNotarizado(_hash);
 
@@ -47,6 +41,27 @@ abstract contract NotarizaInternal is DidDocumentDetailedInternal {
         });
 
         emit INotariza.Notarizado(_hash, msg.sender, did, timestamp);
+    }
+
+    /// @notice Resuelve el DID de una cuenta contra el DidRegistry de ISBE
+    /// @dev Punto de extension pensado para test. En produccion siempre resuelve contra el
+    ///      Diamond de gobernanza real mediante una llamada externa (staticcall), nunca
+    ///      delegatecall ni acceso a storage propio. NotarizaTestWrapper la sobreescribe
+    ///      unicamente para forzar did = 0 con isKnownDid() == true, caso que la libreria
+    ///      red-isbe/isbe-contracts v0.2.1 no deja alcanzar por el camino real: isKnownDid y
+    ///      didOf comparten el mismo guard de capabilityInvocation activa
+    ///      (DidDocumentDetailedInternal.sol). La comprobacion se mantiene de todos modos
+    ///      porque es la que protege en produccion si ese acoplamiento cambia en una version
+    ///      futura de la libreria. Ver D-031 en HISTORIAL.md.
+    /// @param _cuenta Cuenta a resolver
+    /// @return did DID de la cuenta; bytes32(0) si no tiene capabilityInvocation activa
+    function _resolverIdentidad(
+        address _cuenta
+    ) internal view virtual returns (bytes32 did) {
+        if (!IDidRegistryQuery(_DIAMOND).isKnownDid(_cuenta)) {
+            revert INotariza.IdentidadNoRegistrada(_cuenta);
+        }
+        return IDidRegistryQuery(_DIAMOND).didOf(_cuenta);
     }
 
     /// @notice Devuelve la evidencia registrada para un hash

@@ -6,20 +6,41 @@
  *
  * Todas las llamadas van al proxy, nunca al facet: una funcion que no este declarada en
  * selectorsIntrospection() compila y despliega, pero no es enrutable, y solo se detecta asi.
+ *
+ * `notarizar` exige identidad ISBE activa. registerTestDid.ts registra DID a las
+ * cuentas #0 y #1 de Hardhat, asi que el paso que prueba el revert usa la cuenta #2 (sin DID).
+ * El camino feliz se ejercita con la cuenta #1 — ejecutar registerTestDid.ts antes.
+ *
+ * La mnemonic de abajo y las cuentas que deriva son exclusivas de la red local de desarrollo
+ * (es la mnemonic publica estandar de Hardhat). Contra PRE, este script no es directamente
+ * reutilizable: requeriria cuentas con identidad ISBE real, registradas por ISBE.
  */
 import { ethers, artifacts } from 'hardhat'
+import { Mnemonic, HDNodeWallet } from 'ethers'
 
 const PROXY = process.env.NOTARIZA_PROXY
+const HARDHAT_MNEMONIC = 'test test test test test test test test test test test junk'
 
 async function main() {
     if (!PROXY) throw new Error('Falta la variable de entorno NOTARIZA_PROXY')
 
     const [signer] = await ethers.getSigners()
+    const mnemonic = Mnemonic.fromPhrase(HARDHAT_MNEMONIC)
+    const cuentaConDid = HDNodeWallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/1").connect(
+        ethers.provider
+    )
+    const cuentaSinDid = HDNodeWallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/2").connect(
+        ethers.provider
+    )
     console.log('Proxy:', PROXY)
-    console.log('Cuenta:', signer.address)
+    console.log('Cuenta admin:', signer.address)
+    console.log('Cuenta de prueba (con DID):', cuentaConDid.address)
+    console.log('Cuenta sin DID:', cuentaSinDid.address)
 
     const { abi } = await artifacts.readArtifact('INotariza')
     const notariza = new ethers.Contract(PROXY, abi, signer)
+    const notarizaConDid = new ethers.Contract(PROXY, abi, cuentaConDid)
+    const notarizaSinDid = new ethers.Contract(PROXY, abi, cuentaSinDid)
 
     // 1. La infraestructura de ISBE esta enrutada en el proxy.
     //    El README del template propone eip712Domain(), pero esa funcion no existe en
@@ -48,9 +69,21 @@ async function main() {
     const hash = ethers.id('notariza-validacion-' + (await ethers.provider.getBlockNumber()))
     console.log('\n[2] estaNotarizado(hash nuevo):', await notariza.estaNotarizado(hash))
 
-    // 3. notarizar
-    console.log('\n[3] notarizar(hash)')
-    const tx = await notariza.notarizar(hash)
+    // 3. notarizar sin identidad ISBE revierte con IdentidadNoRegistrada
+    console.log('\n[3] notarizar(hash) desde la cuenta sin DID')
+    try {
+        await notarizaSinDid.notarizar.staticCall(hash)
+        throw new Error('No revirtio: el gate de identidad no se esta aplicando')
+    } catch (error: unknown) {
+        const data = (error as { data?: string }).data
+        const parsed = data ? notariza.interface.parseError(data) : null
+        if (parsed?.name !== 'IdentidadNoRegistrada') throw error
+        console.log('    revierte con IdentidadNoRegistrada, cuenta:', parsed.args.cuenta)
+    }
+
+    // 4. notarizar con identidad ISBE activa (cuenta de prueba)
+    console.log('\n[4] notarizar(hash) desde la cuenta con DID')
+    const tx = await notarizaConDid.notarizar(hash)
     const receipt = await tx.wait()
     console.log('    txid:', tx.hash, '| gas:', receipt.gasUsed.toString())
     const evento = receipt.logs
@@ -67,20 +100,20 @@ async function main() {
     console.log('                       did', evento.args.did)
     console.log('                       timestamp', evento.args.timestamp.toString())
 
-    // 4. verificar devuelve la evidencia
+    // 5. verificar devuelve la evidencia
     const evidencia = await notariza.verificar(hash)
-    console.log('\n[4] verificar(hash)')
+    console.log('\n[5] verificar(hash)')
     console.log('    timestamp:', evidencia.timestamp.toString())
     console.log('    emisor:', evidencia.emisor)
     console.log('    did:', evidencia.did)
 
-    // 5. estaNotarizado ahora devuelve true
-    console.log('\n[5] estaNotarizado(hash):', await notariza.estaNotarizado(hash))
+    // 6. estaNotarizado ahora devuelve true
+    console.log('\n[6] estaNotarizado(hash):', await notariza.estaNotarizado(hash))
 
-    // 6. re-notarizar revierte con YaNotarizado conservando el timestamp original
-    console.log('\n[6] re-notarizar el mismo hash')
+    // 7. re-notarizar revierte con YaNotarizado conservando el timestamp original
+    console.log('\n[7] re-notarizar el mismo hash (con DID)')
     try {
-        await notariza.notarizar.staticCall(hash)
+        await notarizaConDid.notarizar.staticCall(hash)
         throw new Error('No revirtio: la regla del primer sellado no se esta aplicando')
     } catch (error: unknown) {
         const data = (error as { data?: string }).data
@@ -92,10 +125,10 @@ async function main() {
         )
     }
 
-    // 7. hash vacio revierte con HashVacio
-    console.log('\n[7] notarizar(bytes32(0))')
+    // 8. hash vacio revierte con HashVacio antes de comprobar la identidad
+    console.log('\n[8] notarizar(bytes32(0)) desde la cuenta sin DID')
     try {
-        await notariza.notarizar.staticCall(ethers.ZeroHash)
+        await notarizaSinDid.notarizar.staticCall(ethers.ZeroHash)
         throw new Error('No revirtio con HashVacio')
     } catch (error: unknown) {
         const data = (error as { data?: string }).data

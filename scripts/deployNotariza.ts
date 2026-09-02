@@ -7,6 +7,11 @@
  *
  * En la red local lo ejecuta la cuenta admin (#0 de Hardhat). En PRE lo ejecuta ISBE con
  * estos mismos parametros: el despliegue local es el ensayo general de la solicitud.
+ *
+ * ADMIN_1 / ADMIN_2 (opcionales): direcciones que reciben PAUSER_ROLE y _NOTARIZA_ADMIN_ROLE
+ * en el paso 3. Sin fijarlas, ambos roles los recibe la cuenta que firma (comportamiento
+ * previo). Sirven para ensayar en local la estructura real de dos administradores (cada uno
+ * con ambos roles) con cuentas de prueba, sin escribir direcciones reales en el repo.
  */
 import { ethers, artifacts } from 'hardhat'
 import { Interface, Signer, TransactionReceipt } from 'ethers'
@@ -15,7 +20,7 @@ import { readFileSync } from 'fs'
 // --- Constantes --------------------------------------------------------------
 
 /** Diamond de gobernanza de ISBE (genesis). Misma direccion en local y en PRE. */
-const DIAMOND = '0x00000000000000000000000000000000000015BE'
+const DIAMOND = '0x00000000000000000000000000000000000015Be'
 
 /**
  * Namespace del proyecto. Se derivan aqui con keccak256 en vez de pegar el hex a mano, por el
@@ -135,13 +140,19 @@ async function main() {
     console.log('   version de configuracion:', paso2.event.args.version.toString())
 
     // Paso 3: crear el proxy del caso de uso
-    // Mapa de roles provisional para la red local: la cuenta admin local asume los dos roles
-    // que la factoria permite fijar. El mapa definitivo (EOAs de Enrique y Leo) se cierra en
-    // la T6. DEFAULT_ADMIN_ROLE lo concede la factoria a quien envia esta transaccion.
+    // Mapa de roles: por defecto la cuenta admin local asume los dos roles que la factoria
+    // permite fijar. Si se fijan ADMIN_1/ADMIN_2, se usan esas dos direcciones para ambos
+    // roles en su lugar (ensayo local de la estructura de dos administradores). El mapa
+    // definitivo de EOAs de Dezen se solicita explicitamente en el expediente a ISBE.
+    // DEFAULT_ADMIN_ROLE lo concede la factoria a quien envia esta transaccion.
     console.log('\n[3/3] Desplegando el proxy del caso de uso')
+    const miembros =
+        process.env.ADMIN_1 && process.env.ADMIN_2
+            ? [process.env.ADMIN_1, process.env.ADMIN_2]
+            : [signer.address]
     const rbacs = [
-        { role: PAUSER_ROLE, members: [signer.address] },
-        { role: NOTARIZA_ADMIN_ROLE, members: [signer.address] },
+        { role: PAUSER_ROLE, members: miembros },
+        { role: NOTARIZA_ADMIN_ROLE, members: miembros },
     ]
     const paso3 = await enviar(
         'deployUseCase',

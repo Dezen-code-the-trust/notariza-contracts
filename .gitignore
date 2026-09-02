@@ -16,3 +16,10 @@ coverage.json
 # Herramientas
 .DS_Store
 *.log
+
+# herramientas locales del asistente: skills de terceros, no código del producto
+/.superpowers/
+
+# specs y planes de las sesiones de diseño con agentes: notas de proceso de trabajo
+# (coordinación entre sesiones, estado sin commitear), no documentación de producto
+/docs/superpowers/

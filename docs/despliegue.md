@@ -1,13 +1,11 @@
 # Despliegue — Notariza
 
-> **Estado: sin desplegar en red local todavía.** Este documento es la plantilla de parámetros y
-> el checklist de validación que se rellenan al completar el despliegue en red local (tarea T6).
 > Los valores de namespace de abajo son fijos desde el código (`constants/constants.sol`) y no
 > cambian con el despliegue; la dirección del **proxy**, los `txid` y el gas de cada paso sí son
-> propios de cada despliegue concreto y se añaden aquí en cuanto exista uno.
+> propios de cada despliegue concreto.
 
 Para el porqué de cada parámetro y de los 3 pasos, ver las secciones 3 y 7 de
-`[docs/arquitectura.md](arquitectura.md)`. Este documento es el insumo directo para el
+[docs/arquitectura.md](arquitectura.md). Este documento es el insumo directo para el
 expediente de homologación ante ISBE: parámetros exactos, mapa de roles solicitado y resultado
 del checklist de validación.
 
@@ -47,29 +45,39 @@ Diamond de gobernanza (mismo en red local y en PRE): `0x000000000000000000000000
 
 
 | Rol                    | Dirección(es)                                              | Origen                                            |
-| ---------------------- | ---------------------------------------------------------- | ------------------------------------------------- |
-| `PAUSER_ROLE`          | `<DIRECCION_ADMIN_1>`                                      | EOA designada por Dezen                           |
-| `_NOTARIZA_ADMIN_ROLE` | `<DIRECCION_ADMIN_1>`                                      | EOA designada por Dezen                           |
+| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------- |
+| `PAUSER_ROLE`          | `<DIRECCION_ADMIN_1>`, `<DIRECCION_ADMIN_2>`               | EOAs designadas por Dezen                         |
+| `_NOTARIZA_ADMIN_ROLE` | `<DIRECCION_ADMIN_1>`, `<DIRECCION_ADMIN_2>`               | EOAs designadas por Dezen                         |
 | `DEFAULT_ADMIN_ROLE`   | *(la concede la factoría a quien ejecuta `deployUseCase`)* | En red local, la cuenta admin local; en PRE, ISBE |
 
 
 Las direcciones reales de las EOAs de Dezen viven en el `.env` de la raíz del árbol de trabajo
-(no versionado en ningún repo; ver `.env_sample` para el formato). En red local, el script
-`contracts/scripts/deployNotariza.ts` usa una única cuenta admin para ambos roles como valor
-provisional de desarrollo — el mapa de roles real que se solicita a ISBE para PRE puede tener
-cuentas distintas por rol y se fija aquí antes de la solicitud.
+(no versionado en ningún repo; ver `.env_sample` para el formato). `contracts/scripts/deployNotariza.ts`
+admite fijar dos administradores distintos con las variables `ADMIN_1`/`ADMIN_2`, cada uno con
+ambos roles — la estructura que se solicitará a ISBE; sin fijarlas, ambos roles los recibe la
+única cuenta que firma el despliegue (valor por defecto, pensado para pruebas rápidas de un
+solo administrador).
 
 ## 3. Resultado del despliegue
 
+> Este despliegue y su checklist se validaron con cuentas de prueba de Hardhat, no con las
+> direcciones reales de los administradores designados por Dezen, porque el mecanismo de
+> concesión de roles de `deployUseCase` no depende de la dirección concreta solicitada (solo
+> rechaza los roles reservados, ver la sección 2). El mapa de roles real que se solicitará a
+> ISBE usa las direcciones de los dos administradores (ver sección 2), no las de este
+> despliegue de prueba. Concretamente,
+> se desplegó con `ADMIN_1` = cuenta #1 y `ADMIN_2` = cuenta #2 del mnemonic estándar de Hardhat
+> (`test test test ... junk`), cada una con `PAUSER_ROLE` y `_NOTARIZA_ADMIN_ROLE`, confirmado con
+> `hasRole()` sobre el proxy resultante.
 
-| Dato                                   | Valor         |
-| -------------------------------------- | ------------- |
-| Proxy de Notariza                      | `<pendiente>` |
-| Implementación (paso 1)                | `<pendiente>` |
-| Chain ID                               | `11073`       |
-| Paso 1 `deploy` — txid / gas           | `<pendiente>` |
-| Paso 2 `setConfiguration` — txid / gas | `<pendiente>` |
-| Paso 3 `deployUseCase` — txid / gas    | `<pendiente>` |
+| Dato                                   | Valor                                                                |
+| --------------------------------------- | --------------------------------------------------------------------- |
+| Proxy de Notariza                      | `0x586aF185D6888040f73a1465265B90f34F112a4C`                        |
+| Implementación (paso 1)                | `0xD1E767120d85A3C217405Cd2A018F0E10B9ff0F4`                        |
+| Chain ID                               | `11073`                                                              |
+| Paso 1 `deploy` — txid / gas           | `0xd22e358634d3dd072d0f4c573e092f3f6c0b07ffac95f7092895e7833e5ee413` / `487977`   |
+| Paso 2 `setConfiguration` — txid / gas | `0xfa626ad30efad5a0eac5ea76fc71c50dce2487bd43ad1e0552fb76c6aed19efe` / `1963271`  |
+| Paso 3 `deployUseCase` — txid / gas    | `0xcb520d57933a6873bd4bdfe40340fd77350d9f9a536d311b1075c0f447161f73` / `1422990`  |
 
 
 ## 4. Checklist de validación post-despliegue
@@ -78,16 +86,16 @@ Reutilizable para el despliegue en PRE. Lo ejecuta
 `contracts/scripts/validateNotariza.ts` contra el **proxy** (nunca contra el facet directo):
 
 
-| Comprobación                                                                                         | Resultado     |
-| ---------------------------------------------------------------------------------------------------- | ------------- |
-| `paused()` responde `false` recién desplegado                                                        | `<pendiente>` |
-| `hasRole()` confirma el mapa de roles de la sección 2                                                | `<pendiente>` |
-| `estaNotarizado(hash)` sobre un hash nuevo devuelve `false`                                          | `<pendiente>` |
-| `notarizar` sin identidad ISBE revierte con `IdentidadNoRegistrada`                                  | `<pendiente>` |
-| `notarizar` con identidad ISBE activa emite `Notarizado` y `verificar` devuelve la evidencia         | `<pendiente>` |
-| Re-notarizar el mismo hash revierte con `YaNotarizado`, conservando el timestamp original            | `<pendiente>` |
-| `notarizar(bytes32(0))` revierte con `HashVacio`                                                     | `<pendiente>` |
-| Pausa desde `PAUSER_ROLE`/admin bloquea `notarizar` sin afectar a `verificar`; reactivación restaura | `<pendiente>` |
+| Comprobación                                                                                         | Resultado |
+| ---------------------------------------------------------------------------------------------------- | --------- |
+| `paused()` responde `false` recién desplegado                                                        | ✅        |
+| `hasRole()` confirma el mapa de roles de la sección 2 (estructura: dos cuentas, ambas con ambos roles) | ✅        |
+| `estaNotarizado(hash)` sobre un hash nuevo devuelve `false`                                          | ✅        |
+| `notarizar` sin identidad ISBE revierte con `IdentidadNoRegistrada`                                  | ✅        |
+| `notarizar` con identidad ISBE activa emite `Notarizado` y `verificar` devuelve la evidencia         | ✅        |
+| Re-notarizar el mismo hash revierte con `YaNotarizado`, conservando el timestamp original            | ✅        |
+| `notarizar(bytes32(0))` revierte con `HashVacio`                                                     | ✅        |
+| Pausa desde `PAUSER_ROLE`/admin bloquea `notarizar` sin afectar a `verificar`; reactivación restaura | ✅        |
 
 
 **Nota sobre `eip712Domain()`:** el `README.md` del template de ISBE la propone como

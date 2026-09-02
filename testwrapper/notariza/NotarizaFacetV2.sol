@@ -7,7 +7,7 @@ import {IEIP2535Introspection} from '@red-isbe/isbe-contracts/contracts/proxies/
 
 /// @title NotarizaFacetV2
 /// @notice Segunda version de prueba del facet Notariza, usada solo por el test de upgrade
-///         del Diamond (T5): mismo storage que NotarizaFacet, con un cambio trivial de logica
+///         del Diamond: mismo storage que NotarizaFacet, con un cambio trivial de logica
 ///         (una funcion nueva de solo lectura) para demostrar que actualizar el facet conserva
 ///         las evidencias ya selladas. Nunca se despliega en produccion.
 /// @dev Comparte la misma _NOTARIZA_RESOLVER_KEY que NotarizaFacet: se registra como una nueva

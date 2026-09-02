@@ -3,7 +3,7 @@ import { ethers } from 'ethers'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-// Valores fijados en T2 (namespace del proyecto). Tabla independiente del .sol a proposito:
+// Namespace del proyecto, con valores fijados. Tabla independiente del .sol a proposito:
 // si alguien cambia la cadena en constants.sol sin querer, esta tabla no cambia con ella y el
 // test detecta la desviacion (la leccion de 8 constantes de roles.sol de la libreria cuyo hex
 // no coincidia con el keccak256 de su cadena documentada).

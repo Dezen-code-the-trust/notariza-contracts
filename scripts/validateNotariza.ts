@@ -7,9 +7,13 @@
  * Todas las llamadas van al proxy, nunca al facet: una funcion que no este declarada en
  * selectorsIntrospection() compila y despliega, pero no es enrutable, y solo se detecta asi.
  *
- * Desde T4, `notarizar` exige identidad ISBE activa. registerTestDid.ts registra DID a las
+ * `notarizar` exige identidad ISBE activa. registerTestDid.ts registra DID a las
  * cuentas #0 y #1 de Hardhat, asi que el paso que prueba el revert usa la cuenta #2 (sin DID).
  * El camino feliz se ejercita con la cuenta #1 — ejecutar registerTestDid.ts antes.
+ *
+ * La mnemonic de abajo y las cuentas que deriva son exclusivas de la red local de desarrollo
+ * (es la mnemonic publica estandar de Hardhat). Contra PRE, este script no es directamente
+ * reutilizable: requeriria cuentas con identidad ISBE real, registradas por ISBE.
  */
 import { ethers, artifacts } from 'hardhat'
 import { Mnemonic, HDNodeWallet } from 'ethers'

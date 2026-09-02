@@ -1,10 +1,10 @@
 /**
  * Registra DIDs de prueba en el DidRegistry del Diamond de gobernanza, para poder ejercitar
- * el camino feliz de `notarizar` en la red local (T4). No se usa en PRE: el registro de
+ * el camino feliz de `notarizar` en la red local. No se usa en PRE: el registro de
  * identidades reales es responsabilidad de ISBE.
  *
  * La logica de registro vive en contracts/test/helpers/cuentas.ts (asegurarDidDePrueba), para
- * no duplicarla entre este script y la suite de tests (T5): ambos ejercitan el flujo real de
+ * no duplicarla entre este script y la suite de tests: ambos ejercitan el flujo real de
  * la libreria, sin mocks.
  *
  * Uso:

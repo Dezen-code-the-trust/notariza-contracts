@@ -52,7 +52,7 @@ abstract contract NotarizaInternal is DidDocumentDetailedInternal {
     ///      didOf comparten el mismo guard de capabilityInvocation activa
     ///      (DidDocumentDetailedInternal.sol). La comprobacion se mantiene de todos modos
     ///      porque es la que protege en produccion si ese acoplamiento cambia en una version
-    ///      futura de la libreria. Ver D-031 en HISTORIAL.md.
+    ///      futura de la libreria.
     /// @param _cuenta Cuenta a resolver
     /// @return did DID de la cuenta; bytes32(0) si no tiene capabilityInvocation activa
     function _resolverIdentidad(

@@ -1,71 +1,108 @@
 # notariza-contracts
 
-Módulo Notariza para Red ISBE (Modalidad 1, patrón Diamond). Ver el `CLAUDE.md` de este repo
-para las convenciones de código y el `CLAUDE.md` de la raíz del árbol de trabajo para el
-contexto completo del proyecto.
+Notariza sella on-chain el hash de un documento junto con quién lo presentó y cuándo, exigiendo
+una identidad activa en Red ISBE (un DID en su `DidRegistry`). El documento en sí nunca sale del
+navegador del usuario: solo su hash llega a la cadena.
 
-## Requisitos previos
+Este repositorio contiene el módulo Solidity — el contrato — desplegado bajo la **Modalidad 1**
+de ISBE (patrón Diamond, EIP-2535). Es el repo hermano de
+[`notariza-ui`](https://github.com/Dezen-code-the-trust/notariza-ui), que consume el ABI
+publicado aquí ([`abi/INotariza.json`](abi/INotariza.json)) como interfaz web.
 
-Este repo **no es un proyecto Hardhat autocontenido**: ocupa la carpeta de fuentes
-(`contracts/`) del template oficial de ISBE `isbe-clients-template`, que aporta
-`hardhat.config.ts`, `package.json` y el `package-lock.json` con las versiones exactas de
-dependencias. Antes de compilar:
+## Arquitectura
 
-1. Clonar `isbe-clients-template` (anotar el tag o commit exacto contra el que se ha validado
-   este repo — pendiente de fijar en el expediente de ISBE).
-2. Clonar este repo dentro, en `<template>/contracts/` (sustituyendo la carpeta de ejemplo del
-   template).
-3. Node.js en la versión que exige el `engines` del template (comprobar `package.json` de la
-   raíz) y `npm` (el gestor de paquetes de los contratos es `npm`, no `pnpm`: eso es solo para
-   `notariza-ui`).
+El Diamond de gobernanza de ISBE y el proxy del caso de uso de Notariza son contratos distintos,
+en direcciones distintas. El proxy consulta la identidad del emisor contra el Diamond con una
+llamada externa de solo lectura (`staticcall`), nunca `delegatecall`:
 
-## Build reproducible
+```mermaid
+flowchart LR
+    Usuario(["Usuario / UI"])
 
-La versión de compilador y los flags están fijados en `hardhat.config.ts` de la raíz y no se
-tocan sin anotarlo en `HISTORIAL.md`:
+    subgraph Gobernanza["Diamond de gobernanza — 0x00…15Be (misma dirección en local y PRE)"]
+        Factory["IsbeFactory"]
+        DidRegistry["DidRegistryQuery"]
+    end
 
-- `solc 0.8.28`
-- `evmVersion: istanbul`
-- optimizer activado, `runs: 200`
-- versión de `@red-isbe/isbe-contracts` fijada en `package.json`/`package-lock.json` de la raíz
-  (`^0.2.1` en el momento de escribir esto; el lockfile fija la resolución exacta)
+    subgraph CasoUso["Proxy de Notariza — dirección propia, distinta del Diamond"]
+        Facet["NotarizaFacet"]
+        Storage[("NotarizaStorage")]
+    end
 
-Procedimiento, desde la raíz del árbol de trabajo:
+    Usuario -->|"notarizar / verificar / estaNotarizado"| Facet
+    Facet -->|"staticcall: isKnownDid / didOf"| DidRegistry
+    Factory -.->|"deploy / setConfiguration / deployUseCase"| Facet
+    Facet --> Storage
+```
+
+El módulo, como toda faceta de Modalidad 1, se estructura en 4 ficheros con responsabilidades
+que no se solapan:
+
+```mermaid
+flowchart TB
+    INotariza["INotariza.sol<br/>interfaz: struct Evidencia,<br/>eventos, errores tipados"]
+    Internal["NotarizaInternal.sol<br/>storage del módulo y lógica _*<br/>(acceso al slot fijo)"]
+    External["Notariza.sol<br/>capa external: guards<br/>(whenNotPaused) + delegación"]
+    Facet["NotarizaFacet.sol<br/>contrato desplegable +<br/>introspección EIP-2535"]
+
+    Facet --> External
+    External --> Internal
+    External -.->|"implementa"| INotariza
+    Internal -.->|"usa structs de"| INotariza
+```
+
+Detalle completo — por qué Modalidad 1, el flujo de identidad, el storage no estructurado, los 3
+pasos de despliegue y las reglas del patrón que no se pueden romper — en
+[`docs/arquitectura.md`](docs/arquitectura.md).
+
+## Probar en local
 
 ```bash
-npm install          # usa package-lock.json commiteado: build reproducible, no "npm update"
 npx hardhat compile
+npx hardhat test --network isbe
 ```
 
-Un tercero que clone el mismo tag del template y este repo en el mismo commit, con el mismo
-`package-lock.json`, obtiene el mismo bytecode: el `bytecode` de
-`artifacts/contracts/notariza/NotarizaFacet.sol/NotarizaFacet.json` es determinista para una
-misma versión de solc, mismos flags y mismo código fuente.
+Requiere la red local de ISBE levantada y este repo integrado dentro del template
+`isbe-clients-template` (el proyecto Hardhat es la raíz de ese template, no este repo). Guía
+completa, paso a paso, en [`docs/entorno-local.md`](docs/entorno-local.md).
 
-Para verificación en el explorador (Blockscout) o para comparar bytecode entre dos builds, el
-`package.json` de la raíz expone:
+## Estructura del repositorio
 
-```bash
-npm run standard-input   # genera standard-input.json a partir de artifacts/build-info/
+```
+contracts/                          ← raíz de este repo
+├── abi/INotariza.json              — ABI de release, consumido por notariza-ui
+├── constants/constants.sol         — namespace, resolver key, config id, rol admin, Diamond
+├── notariza/
+│   ├── INotariza.sol                — interfaz: struct Evidencia, eventos, errores
+│   ├── NotarizaInternal.sol         — storage del módulo y lógica interna
+│   ├── Notariza.sol                 — capa external: guards + delegación
+│   └── NotarizaFacet.sol            — contrato desplegable, introspección EIP-2535
+├── testwrapper/notariza/
+│   ├── NotarizaTestWrapper.sol      — expone la lógica interna para tests unitarios
+│   └── NotarizaFacetV2.sol          — v2 de prueba, solo para el test de upgrade
+├── scripts/
+│   ├── deployNotariza.ts            — despliegue en 3 pasos contra el Diamond
+│   ├── validateNotariza.ts          — checklist de validación post-despliegue
+│   ├── registerTestDid.ts           — registra DID de prueba en la red local
+│   └── checkStorage.ts              — verificación empírica del slot de storage
+├── test/
+│   ├── constants.test.ts            — cada constante == keccak256 de su string
+│   ├── helpers/                     — despliegue, cuentas de prueba, constantes compartidas
+│   └── notariza/                    — unitarios, integración, introspección, upgrade
+└── docs/
+    ├── arquitectura.md              — diseño técnico y reglas del patrón
+    ├── entorno-local.md             — cómo levantar la red y desplegar
+    ├── despliegue.md                — parámetros de despliegue y checklist
+    └── slither-report.md            — informe de análisis estático
 ```
 
-Ese fichero es la entrada estándar de verificación de Solidity (Etherscan/Blockscout-compatible):
-compararlo entre dos builds (por ejemplo el local y el que use ISBE en PRE) es la forma de
-demostrar que el bytecode desplegado corresponde exactamente a este código fuente.
+## Documentación
 
-## Tests y análisis estático
-
-Requiere la red local de ISBE levantada (`./isbe-network-case/startNetwork.sh` desde la raíz):
-los tests hacen llamadas reales al DidRegistry del Diamond de gobernanza, no hay red de test en
-memoria que lo sustituya.
-
-```bash
-npx hardhat test --network isbe      # suite completa: unitarios, integracion, introspeccion,
-                                      # constantes y upgrade
-slither . --hardhat-artifacts-directory artifacts --filter-paths "node_modules|isbe-network-case" --exclude-dependencies  # analisis estatico; ver docs/slither-report.md
-```
-
-## Despliegue
-
-Ver `CLAUDE.md` §6 (comandos) y §6 del `CLAUDE.md` de este repo (los 3 pasos). Los scripts
-están en `scripts/`.
+- [`docs/arquitectura.md`](docs/arquitectura.md) — diseño técnico: por qué Modalidad 1, el
+  Diamond de gobernanza frente al proxy, el flujo de identidad, el storage no estructurado y las
+  reglas del patrón.
+- [`docs/entorno-local.md`](docs/entorno-local.md) — cómo levantar la red local, integrar este
+  repo en el template de ISBE, compilar, desplegar, testear y validar.
+- [`docs/despliegue.md`](docs/despliegue.md) — parámetros de despliegue (namespace, mapa de
+  roles) y checklist de validación post-despliegue.
+- [`docs/slither-report.md`](docs/slither-report.md) — informe de análisis estático.

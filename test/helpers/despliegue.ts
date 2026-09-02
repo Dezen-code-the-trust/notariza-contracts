@@ -90,7 +90,7 @@ export async function desplegarNotariza(
     ]
     const paso3 = await enviar(
         // version = 0: el proxy resuelve siempre "la ultima" configId en cada llamada. Es lo
-        // que hace posible el test de upgrade (Tarea 10) sin volver a llamar a deployUseCase.
+        // que hace posible el test de upgrade sin volver a llamar a deployUseCase.
         iface.encodeFunctionData('deployUseCase', [configId, 0, rbacs, false, [], []]),
         admin,
         iface,

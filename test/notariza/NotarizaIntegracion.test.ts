@@ -87,7 +87,7 @@ describe('Notariza — integracion (siempre contra el proxy)', () => {
         await expect(sinRol.pause()).to.be.revertedWithCustomError(sinRol, 'AccountHasNoRoles')
 
         // en la red persistente real la transaccion no esta minada al instante: hay que
-        // esperar el receipt antes de comprobar el evento con el matcher (leccion de la Tarea 6)
+        // esperar el receipt antes de comprobar el evento con el matcher
         const txPause = await conRol.pause()
         await txPause.wait()
         await expect(txPause).to.emit(conRol, 'Paused').withArgs(admin.address)

@@ -15,7 +15,7 @@ import { readFileSync } from 'fs'
 // --- Constantes --------------------------------------------------------------
 
 /** Diamond de gobernanza de ISBE (genesis). Misma direccion en local y en PRE. */
-const DIAMOND = '0x00000000000000000000000000000000000015BE'
+const DIAMOND = '0x00000000000000000000000000000000000015Be'
 
 /**
  * Namespace del proyecto. Se derivan aqui con keccak256 en vez de pegar el hex a mano, por el
@@ -136,8 +136,9 @@ async function main() {
 
     // Paso 3: crear el proxy del caso de uso
     // Mapa de roles provisional para la red local: la cuenta admin local asume los dos roles
-    // que la factoria permite fijar. El mapa definitivo (EOAs de Enrique y Leo) se cierra en
-    // la T6. DEFAULT_ADMIN_ROLE lo concede la factoria a quien envia esta transaccion.
+    // que la factoria permite fijar. El mapa definitivo de EOAs de Dezen se solicita
+    // explicitamente en el expediente a ISBE. DEFAULT_ADMIN_ROLE lo concede la factoria a
+    // quien envia esta transaccion.
     console.log('\n[3/3] Desplegando el proxy del caso de uso')
     const rbacs = [
         { role: PAUSER_ROLE, members: [signer.address] },

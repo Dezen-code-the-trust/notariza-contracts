@@ -17,7 +17,7 @@ contract NotarizaTestWrapper is NotarizaFacet {
     ///         identidad conocida, en vez de propagar el did real devuelto por el DidRegistry.
     /// @dev Variable de estado suelta, fuera de NotarizaStorage: aceptable en este contrato
     ///      porque nunca se despliega detras del proxy y por tanto no comparte storage con
-    ///      ninguna otra faceta. Ver D-031 en HISTORIAL.md.
+    ///      ninguna otra faceta.
     bool private _forzarDidCeroParaTest;
 
     /// @notice Inicializa los roles para pruebas aisladas
@@ -50,7 +50,7 @@ contract NotarizaTestWrapper is NotarizaFacet {
     }
 
     /// @notice Activa o desactiva el forzado de did = 0 para el test de la rama defensiva de
-    ///         _resolverIdentidad (ver D-031 en HISTORIAL.md)
+    ///         _resolverIdentidad, inalcanzable contra el DidRegistry real (ver su NatSpec)
     /// @param _forzar True para forzar did = 0 en la siguiente notarizacion
     function forzarDidCeroParaTest(bool _forzar) external {
         _forzarDidCeroParaTest = _forzar;

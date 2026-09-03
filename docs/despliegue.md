@@ -9,14 +9,12 @@ Para el porqué de cada parámetro y de los 3 pasos, ver las secciones 3 y 7 de
 de solicitud de despliegue ante ISBE: parámetros exactos, mapa de roles solicitado y resultado
 del checklist de validación.
 
-> ⚠️ **PENDIENTE BLOQUEANTE — direcciones del mapa de roles.**
-> Las direcciones de la sección 2 siguen siendo placeholders. **El formulario de registro de
-> smart contracts del Portal de ISBE no tiene campo para el mapa de roles**: solo admite nombre,
-> URL de repositorio, comentarios y entorno de destino. Si las direcciones no constan en este
-> documento, no llegan a ISBE, y `deployUseCase` se ejecutará sin ellas.
-> Como `DEFAULT_ADMIN_ROLE` lo recibe quien firma esa transacción —ISBE, no Dezen—, un mapa de
-> roles incompleto **no se puede corregir después** sin una concesión explícita de ISBE.
-> Sustituir por las EOAs reales, en formato checksum, antes de enviar el expediente.
+> **El mapa de roles de la sección 2 es definitivo y no se puede corregir después.**
+> El formulario de registro de smart contracts del Portal de ISBE no tiene campo para roles —
+> solo admite nombre, URL de repositorio, comentarios y entorno de destino—, así que este
+> documento es el único canal por el que llegan a ISBE. Y como `DEFAULT_ADMIN_ROLE` lo recibe
+> quien firma `deployUseCase`, que en PRE es ISBE y no Dezen, cualquier concesión posterior de
+> roles depende de una acción explícita suya.
 
 ## 1. Namespace y parámetros fijos
 
@@ -64,11 +62,15 @@ expediente y deben coincidir exactamente con lo que recompile ISBE:
 `ForbiddenRole` si se pide explícitamente, y lo concede ella misma a quien envía la transacción
 `deployUseCase` (ver la sección 8 de `docs/arquitectura.md`).
 
-| Rol                    | Dirección(es)                                | Origen                                            |
-| ---------------------- | -------------------------------------------- | ------------------------------------------------- |
-| `PAUSER_ROLE`          | `<DIRECCION_ADMIN_1>`, `<DIRECCION_ADMIN_2>` | EOAs designadas por Dezen                         |
-| `_NOTARIZA_ADMIN_ROLE` | `<DIRECCION_ADMIN_1>`, `<DIRECCION_ADMIN_2>` | EOAs designadas por Dezen                         |
-| `DEFAULT_ADMIN_ROLE`   | *(la concede la factoría a quien ejecuta `deployUseCase`)* | En red local, la cuenta admin local; en PRE, ISBE |
+| Rol                    | Dirección(es)                                                                                | Origen                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `PAUSER_ROLE`          | `0xD193F604C82C5f37F88de054B99a9a6Adf7cec7B`<br>`0x2f7970674B6410f90b8Bc43D8188EF35ab3f1a9B` | EOAs designadas por Dezen                         |
+| `_NOTARIZA_ADMIN_ROLE` | `0xD193F604C82C5f37F88de054B99a9a6Adf7cec7B`<br>`0x2f7970674B6410f90b8Bc43D8188EF35ab3f1a9B` | EOAs designadas por Dezen                         |
+| `DEFAULT_ADMIN_ROLE`   | *(la concede la factoría a quien ejecuta `deployUseCase`)*                                   | En red local, la cuenta admin local; en PRE, ISBE |
+
+Ambas direcciones están en formato checksum EIP-55 y ambas reciben **los dos roles**: no se
+separa administración de pausa entre personas, para que ninguna de las dos operaciones dependa
+de la disponibilidad de una sola persona.
 
 `scripts/deployNotariza.ts` admite fijar dos administradores distintos con las variables
 `ADMIN_1`/`ADMIN_2`, cada uno con ambos roles — la estructura que se solicitará a ISBE. Sin

@@ -26,7 +26,7 @@ const ESPERADAS: Record<string, { cadena: string; hex: string }> = {
     },
 }
 
-const RUTA_CONSTANTS = join(__dirname, '..', 'constants', 'constants.sol')
+const RUTA_CONSTANTS = join(__dirname, '..', 'contracts', 'constants', 'constants.sol')
 
 describe('constants.sol — namespace del proyecto', () => {
     const fuente = readFileSync(RUTA_CONSTANTS, 'utf8')
